@@ -26,9 +26,10 @@ A lightweight Chrome extension that lets online learners precisely control video
 
 ### Keyboard Shortcuts
 
-- **`,` (comma)**: Decrease playback speed by 0.1×
-- **`.` (period)**: Increase playback speed by 0.1×
+- **`,` (comma) or `<`**: Decrease playback speed by 0.1×
+- **`.` (period) or `>`**: Increase playback speed by 0.1×
 - **`r`**: Toggle between current speed and your preferred speed (default: 1.8×)
+  - Note: `Command+R` (Mac) or `Ctrl+R` (Windows) will still refresh the page as normal
 
 ### Configuring Preferred Speed
 
