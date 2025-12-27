@@ -287,17 +287,23 @@
       return;
     }
 
+    // Use event.code for more reliable key detection across keyboard layouts
+    const code = event.code;
+    const key = event.key;
+
+    // CRITICAL: Check for browser shortcuts first and exit immediately
+    // Command+R (Mac) / Ctrl+R (Windows) for refresh
+    if ((code === 'KeyR' || key === 'r' || key === 'R') && (event.metaKey || event.ctrlKey)) {
+      // Let the browser handle refresh shortcuts - do NOT interfere
+      return;
+    }
+
     // Find active video element
     const video = VideoController.findActiveVideo();
     if (!video) return;
 
     let newSpeed = null;
     let shouldHandle = false;
-
-    // Use event.code for more reliable key detection across keyboard layouts
-    // Also support event.key as fallback
-    const code = event.code;
-    const key = event.key;
 
     // Decrease speed: Comma key
     if (code === 'Comma' || key === ',' || key === '<') {
@@ -309,10 +315,10 @@
       newSpeed = VideoController.changeSpeed(video, SPEED_STEP);
       shouldHandle = true;
     }
-    // Toggle preferred speed: R key
+    // Toggle preferred speed: R key (without modifiers)
     else if (code === 'KeyR' || key === 'r' || key === 'R') {
-      // Ignore if Command/Ctrl key is pressed (for refresh shortcuts)
-      if (!event.metaKey && !event.ctrlKey && !event.shiftKey) {
+      // Only handle if no modifier keys are pressed
+      if (!event.shiftKey && !event.altKey) {
         newSpeed = VideoController.togglePreferredSpeed(video, preferredSpeed);
         shouldHandle = true;
       }
