@@ -88,12 +88,26 @@
     <h3>What to Test:</h3>
     <ul>
       <li>✅ Speed changes when pressing <code>,</code> and <code>.</code> keys</li>
-      <li>✅ Overlay appears in top-right corner showing current speed</li>
+      <li>✅ Overlay appears in <strong>top-left corner</strong> showing current speed</li>
       <li>✅ Overlay auto-hides after 1.2 seconds</li>
       <li>✅ Toggle between preferred speed and 1.0x with <code>r</code> key</li>
       <li>✅ Works with multiple video elements (try scrolling down)</li>
       <li>✅ Doesn't interfere when typing in the input field below</li>
       <li>✅ MutationObserver detects dynamically added videos</li>
+      <li>✅ <strong>NEW:</strong> Overlay persists and repositions correctly in fullscreen mode</li>
+      <li>✅ <strong>NEW:</strong> Playback speed is maintained after pause/play cycle</li>
+      <li>✅ <strong>NEW:</strong> Speed is restored when video plays after being paused</li>
+    </ul>
+    
+    <h3>T-003 Specific Tests (Fullscreen & Speed Retention):</h3>
+    <ul>
+      <li>🎯 Change speed with <code>,</code> or <code>.</code>, then enter fullscreen - overlay should remain visible in <strong>top-left</strong></li>
+      <li>🎯 While in fullscreen, change speed - overlay should update properly with correct speed value</li>
+      <li>🎯 Exit fullscreen - overlay should reposition correctly to top-left</li>
+      <li>🎯 Set speed to 1.5x, pause video, wait 3 seconds, press play - speed should stay at 1.5x</li>
+      <li>🎯 Change speed while paused, then play - new speed should be applied</li>
+      <li>🎯 Test on multiple videos to ensure each maintains its own speed independently</li>
+      <li>🎯 <strong>Verify overlay shows correct speed value</strong> (e.g., 1.8x should show as "1.8x", not "1.0x")</li>
     </ul>
     
     <h3>Test Input Field:</h3>

@@ -28,6 +28,11 @@
   let shadowRoot = null;
   let videoElements = new Set();
   let mutationObserver = null;
+  
+  // Per-video state management using WeakMap to prevent memory leaks
+  const lastRateByVideo = new WeakMap();
+  const overlayByVideo = new WeakMap();
+  const listenerAbortByVideo = new WeakMap();
 
   /**
    * Video Controller Module
@@ -61,24 +66,26 @@
     },
 
     /**
-     * Change video playback speed
+     * Change video playback speed and store it
      */
     changeSpeed(video, delta) {
       if (!video) return null;
       
       const newSpeed = Math.max(MIN_SPEED, Math.min(MAX_SPEED, video.playbackRate + delta));
       video.playbackRate = newSpeed;
+      lastRateByVideo.set(video, newSpeed);
       return newSpeed;
     },
 
     /**
-     * Set video playback speed to specific value
+     * Set video playback speed to specific value and store it
      */
     setSpeed(video, speed) {
       if (!video) return null;
       
       const clampedSpeed = Math.max(MIN_SPEED, Math.min(MAX_SPEED, speed));
       video.playbackRate = clampedSpeed;
+      lastRateByVideo.set(video, clampedSpeed);
       return clampedSpeed;
     },
 
@@ -95,53 +102,73 @@
       } else {
         return this.setSpeed(video, preferred);
       }
+    },
+
+    /**
+     * Restore last playback rate for a video
+     */
+    restoreSpeed(video) {
+      if (!video) return;
+      
+      const lastRate = lastRateByVideo.get(video);
+      if (typeof lastRate === 'number' && video.playbackRate !== lastRate) {
+        video.playbackRate = lastRate;
+        console.log(`[Video Speed Controller] Restored speed to ${lastRate.toFixed(1)}x`);
+      }
     }
   };
 
   /**
    * Overlay UI Module
    * Manages the speed overlay display on top of video element
+   * Now supports per-video overlays with fullscreen compatibility
    */
   const OverlayUI = {
-    currentVideo: null,
-    positionUpdateInterval: null,
+    /**
+     * Get or create overlay root element for a specific video
+     */
+    ensureOverlay(video) {
+      if (!video) return null;
+
+      let overlayRoot = overlayByVideo.get(video);
+      const isNewOverlay = !overlayRoot;
+      
+      if (!overlayRoot) {
+        overlayRoot = this.createOverlayRoot();
+        overlayByVideo.set(video, overlayRoot);
+      }
+
+      // Ensure overlay is attached to the correct container (handles fullscreen)
+      const container = this.getFullscreenContainer(video);
+      if (container && overlayRoot.parentNode !== container) {
+        container.appendChild(overlayRoot);
+      }
+
+      this.positionOverlay(overlayRoot, video);
+      
+      // Initialize overlay with current speed if newly created
+      if (isNewOverlay && overlayRoot._overlayElement) {
+        overlayRoot._overlayElement.textContent = `${video.playbackRate.toFixed(1)}x`;
+      }
+      
+      return overlayRoot;
+    },
 
     /**
-     * Create or update overlay for a specific video element
+     * Create a new overlay root element with shadow DOM
      */
-    createForVideo(video) {
-      if (!video) return;
-
-      // If overlay already exists for this video, just ensure it's positioned correctly
-      if (this.currentVideo === video && overlayContainer && overlayElement) {
-        this.updateSpeed(video.playbackRate);
-        return;
-      }
-
-      // Remove old overlay if video changed
-      if (this.currentVideo !== video) {
-        this.remove();
-      }
-
-      this.currentVideo = video;
-
-      // Create container element (will be positioned over video)
-      overlayContainer = document.createElement('div');
-      overlayContainer.id = 'vsc-overlay-container';
+    createOverlayRoot() {
+      const container = document.createElement('div');
+      container.className = 'vsc-overlay-root';
       
-      // Attach shadow DOM for style isolation
-      shadowRoot = overlayContainer.attachShadow({ mode: 'closed' });
-
-      // Create overlay element inside shadow DOM
-      overlayElement = document.createElement('div');
-      overlayElement.id = 'speed-overlay';
-      overlayElement.className = 'vsc-overlay';
-
-      // Create style element
+      const shadow = container.attachShadow({ mode: 'closed' });
+      
       const styleElement = document.createElement('style');
       styleElement.textContent = `
         .vsc-overlay {
-          position: fixed;
+          position: absolute;
+          top: 10px;
+          left: 10px;
           background-color: rgba(0, 0, 0, 0.6);
           color: #ffffff;
           padding: 4px 8px;
@@ -152,11 +179,11 @@
           box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
           pointer-events: none;
           user-select: none;
+          z-index: 2147483647;
+          white-space: nowrap;
           opacity: 0.5;
           visibility: visible;
           transition: opacity 0.2s ease;
-          z-index: 999999;
-          white-space: nowrap;
         }
 
         .vsc-overlay.highlight {
@@ -173,81 +200,107 @@
           }
         }
       `;
-
-      shadowRoot.appendChild(styleElement);
-      shadowRoot.appendChild(overlayElement);
-
-      // Add to body (not video parent to avoid layout issues)
-      document.body.appendChild(overlayContainer);
-
-      // Position overlay over video
-      this.positionOverlay(video);
-
-      // Update initial speed display
-      this.updateSpeed(video.playbackRate);
-
-      console.log('[Video Speed Controller] Overlay created for video');
+      
+      const overlayDiv = document.createElement('div');
+      overlayDiv.className = 'vsc-overlay';
+      
+      shadow.appendChild(styleElement);
+      shadow.appendChild(overlayDiv);
+      
+      // Store reference to shadow root and overlay element
+      container._shadow = shadow;
+      container._overlayElement = overlayDiv;
+      
+      return container;
     },
 
     /**
-     * Position overlay on top of video element
+     * Get the appropriate container for the overlay (handles fullscreen)
      */
-    positionOverlay(video) {
-      if (!video || !overlayContainer || !overlayElement) return;
-
-      const updatePosition = () => {
-        if (!video || !overlayContainer || !overlayElement) return;
-        
-        const rect = video.getBoundingClientRect();
-        
-        // Only show if video is visible on screen
-        if (rect.width > 0 && rect.height > 0) {
-          const left = rect.left + 10;
-          const top = rect.top + 10;
-          
-          overlayElement.style.position = 'fixed';
-          overlayElement.style.left = `${left}px`;
-          overlayElement.style.top = `${top}px`;
-          overlayElement.style.display = 'block';
-        } else {
-          overlayElement.style.display = 'none';
+    getFullscreenContainer(video) {
+      // Check for fullscreen element (with vendor prefix fallback)
+      const fullscreenElement = document.fullscreenElement || 
+                                document.webkitFullscreenElement || 
+                                document.mozFullScreenElement || 
+                                document.msFullscreenElement;
+      
+      if (fullscreenElement) {
+        // If video itself is fullscreen, use it
+        if (fullscreenElement === video) {
+          return video.parentElement || document.body;
         }
-      };
-
-      // Initial position
-      updatePosition();
-
-      // Clear previous interval if exists
-      if (this.positionUpdateInterval) {
-        clearInterval(this.positionUpdateInterval);
+        // If a parent container is fullscreen, use it
+        if (fullscreenElement.contains(video)) {
+          return fullscreenElement;
+        }
       }
+      
+      // Fallback: find nearest positioned ancestor
+      let parent = video.parentElement;
+      while (parent && parent !== document.body) {
+        const position = window.getComputedStyle(parent).position;
+        if (position === 'relative' || position === 'absolute' || position === 'fixed') {
+          return parent;
+        }
+        parent = parent.parentElement;
+      }
+      
+      return video.parentElement || document.body;
+    },
 
-      // Update position periodically (for dynamic layouts)
-      this.positionUpdateInterval = setInterval(updatePosition, 500);
+    /**
+     * Position overlay at top-left of video
+     */
+    positionOverlay(overlayRoot, video) {
+      if (!overlayRoot || !video) return;
 
-      // Also update on scroll and resize
-      window.addEventListener('scroll', updatePosition, true);
-      window.addEventListener('resize', updatePosition);
+      const container = this.getFullscreenContainer(video);
+      const isFullscreen = !!(document.fullscreenElement || 
+                              document.webkitFullscreenElement || 
+                              document.mozFullScreenElement || 
+                              document.msFullscreenElement);
+
+      if (isFullscreen) {
+        // In fullscreen, use fixed positioning relative to viewport
+        overlayRoot.style.position = 'fixed';
+        overlayRoot.style.top = '10px';
+        overlayRoot.style.left = '10px';
+      } else {
+        // Normal mode: position relative to video
+        overlayRoot.style.position = 'absolute';
+        overlayRoot.style.top = '0';
+        overlayRoot.style.left = '0';
+      }
+      
+      overlayRoot.style.pointerEvents = 'none';
+      overlayRoot.style.zIndex = '2147483647';
     },
 
     /**
      * Update overlay with speed value
      */
-    updateSpeed(speed, highlight = false) {
-      if (!overlayElement) return;
+    updateSpeed(video, speed, highlight = false) {
+      if (!video) return;
 
-      overlayElement.textContent = `${speed.toFixed(1)}x`;
+      const overlayRoot = this.ensureOverlay(video);
+      if (!overlayRoot || !overlayRoot._overlayElement) return;
+
+      const overlayElement = overlayRoot._overlayElement;
+      
+      // Get the actual current speed from the video element
+      const currentSpeed = typeof speed === 'number' ? speed : video.playbackRate;
+      overlayElement.textContent = `${currentSpeed.toFixed(1)}x`;
       
       if (highlight) {
         overlayElement.classList.add('highlight');
-
-        // Clear existing timer
-        if (overlayTimer) {
-          clearTimeout(overlayTimer);
+        
+        // Clear any existing timeout
+        if (overlayRoot._hideTimer) {
+          clearTimeout(overlayRoot._hideTimer);
         }
-
-        // Remove highlight after timeout
-        overlayTimer = setTimeout(() => {
+        
+        // Auto-remove highlight after timeout
+        overlayRoot._hideTimer = setTimeout(() => {
           if (overlayElement) {
             overlayElement.classList.remove('highlight');
           }
@@ -256,24 +309,81 @@
     },
 
     /**
-     * Remove overlay
+     * Handle fullscreen changes for all videos
      */
-    remove() {
-      if (this.positionUpdateInterval) {
-        clearInterval(this.positionUpdateInterval);
-        this.positionUpdateInterval = null;
+    handleFullscreenChange() {
+      videoElements.forEach(video => {
+        const overlayRoot = overlayByVideo.get(video);
+        if (overlayRoot) {
+          this.ensureOverlay(video);
+        }
+      });
+    },
+
+    /**
+     * Remove overlay for a specific video
+     */
+    removeOverlay(video) {
+      const overlayRoot = overlayByVideo.get(video);
+      if (overlayRoot && overlayRoot.parentNode) {
+        overlayRoot.parentNode.removeChild(overlayRoot);
       }
-      
-      if (overlayContainer && overlayContainer.parentNode) {
-        overlayContainer.parentNode.removeChild(overlayContainer);
-      }
-      
-      overlayContainer = null;
-      overlayElement = null;
-      shadowRoot = null;
-      this.currentVideo = null;
+      overlayByVideo.delete(video);
     }
   };
+
+  /**
+   * Attach event handlers to a video element
+   */
+  function attachVideoHandlers(video) {
+    if (!video) return;
+    
+    // Prevent duplicate listeners
+    if (listenerAbortByVideo.has(video)) return;
+    
+    const controller = new AbortController();
+    listenerAbortByVideo.set(video, controller);
+    const signal = controller.signal;
+
+    // Track rate changes
+    video.addEventListener('ratechange', () => {
+      const currentRate = video.playbackRate;
+      lastRateByVideo.set(video, currentRate);
+      OverlayUI.updateSpeed(video, currentRate, false);
+    }, { signal, passive: true });
+
+    // Restore speed on play
+    video.addEventListener('play', () => {
+      VideoController.restoreSpeed(video);
+      OverlayUI.updateSpeed(video, video.playbackRate, false);
+    }, { signal });
+
+    // Keep overlay updated on pause
+    video.addEventListener('pause', () => {
+      OverlayUI.updateSpeed(video, video.playbackRate, false);
+    }, { signal, passive: true });
+
+    // Initialize last rate if not set
+    if (!lastRateByVideo.has(video)) {
+      lastRateByVideo.set(video, video.playbackRate);
+    }
+    
+    // Update overlay with current speed
+    OverlayUI.updateSpeed(video, video.playbackRate, false);
+
+    console.log('[Video Speed Controller] Event handlers attached to video');
+  }
+
+  /**
+   * Detach event handlers from a video element
+   */
+  function detachVideoHandlers(video) {
+    const controller = listenerAbortByVideo.get(video);
+    if (controller) {
+      controller.abort();
+      listenerAbortByVideo.delete(video);
+    }
+  }
 
   /**
    * Handle keyboard events for speed control
@@ -325,18 +435,25 @@
     }
 
     if (shouldHandle && newSpeed !== null) {
-      // Ensure overlay exists for current video
-      OverlayUI.createForVideo(video);
-      
       // Prevent default action and stop propagation to avoid site shortcut conflicts
       event.preventDefault();
       event.stopPropagation();
       
       // Update overlay with new speed (with highlight effect)
-      OverlayUI.updateSpeed(newSpeed, true);
+      OverlayUI.updateSpeed(video, newSpeed, true);
       
       console.log(`[Video Speed Controller] Speed changed to ${newSpeed.toFixed(1)}x`);
     }
+  }
+
+  /**
+   * Handle fullscreen changes
+   */
+  function handleFullscreenChange() {
+    // Re-position overlays for all tracked videos
+    OverlayUI.handleFullscreenChange();
+    
+    console.log('[Video Speed Controller] Fullscreen state changed');
   }
 
   /**
@@ -346,14 +463,16 @@
     // Initial scan for video elements
     updateVideoElements();
 
-    // Create overlay for first video if exists
-    const initialVideo = VideoController.findActiveVideo();
-    if (initialVideo) {
-      OverlayUI.createForVideo(initialVideo);
-    }
+    // Setup fullscreen change listener
+    document.addEventListener('fullscreenchange', handleFullscreenChange, { passive: true });
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange, { passive: true });
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange, { passive: true });
+    document.addEventListener('msfullscreenchange', handleFullscreenChange, { passive: true });
 
-    // Watch for dynamically added video elements
+    // Watch for dynamically added video elements (with optimized observer)
     mutationObserver = new MutationObserver((mutations) => {
+      let shouldUpdate = false;
+      
       for (const mutation of mutations) {
         if (mutation.type === 'childList') {
           const hasVideoElements = 
@@ -363,26 +482,41 @@
             );
           
           if (hasVideoElements) {
-            updateVideoElements();
-            // Update overlay for the active video
-            const activeVideo = VideoController.findActiveVideo();
-            if (activeVideo) {
-              OverlayUI.createForVideo(activeVideo);
-            }
+            shouldUpdate = true;
+            break;
           }
         }
       }
+      
+      if (shouldUpdate) {
+        updateVideoElements();
+      }
     });
 
+    // Observe only necessary changes to minimize performance impact
     mutationObserver.observe(document.documentElement, {
       childList: true,
-      subtree: true
+      subtree: true,
+      // Minimize observer scope - only watch for added/removed nodes
+      attributes: false,
+      characterData: false
     });
 
-    // Also watch for video play events to update overlay position
+    // Handle video play events
     document.addEventListener('play', (event) => {
       if (event.target.tagName === 'VIDEO') {
-        OverlayUI.createForVideo(event.target);
+        const video = event.target;
+        attachVideoHandlers(video);
+        OverlayUI.ensureOverlay(video);
+        VideoController.restoreSpeed(video);
+      }
+    }, true);
+
+    // Handle video loadedmetadata to catch initial video setup
+    document.addEventListener('loadedmetadata', (event) => {
+      if (event.target.tagName === 'VIDEO') {
+        const video = event.target;
+        attachVideoHandlers(video);
       }
     }, true);
   }
@@ -392,7 +526,25 @@
    */
   function updateVideoElements() {
     const videos = VideoController.findAllVideos();
-    videoElements = new Set(videos);
+    const newVideos = new Set(videos);
+    
+    // Attach handlers to new videos
+    newVideos.forEach(video => {
+      if (!videoElements.has(video)) {
+        attachVideoHandlers(video);
+        OverlayUI.ensureOverlay(video);
+      }
+    });
+    
+    // Clean up removed videos
+    videoElements.forEach(video => {
+      if (!newVideos.has(video)) {
+        detachVideoHandlers(video);
+        OverlayUI.removeOverlay(video);
+      }
+    });
+    
+    videoElements = newVideos;
   }
 
   /**
@@ -423,8 +575,20 @@
     if (mutationObserver) {
       mutationObserver.disconnect();
     }
+    
     document.removeEventListener('keydown', handleKeydown, true);
-    OverlayUI.remove();
+    document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+    
+    // Clean up all video handlers and overlays
+    videoElements.forEach(video => {
+      detachVideoHandlers(video);
+      OverlayUI.removeOverlay(video);
+    });
+    
+    videoElements.clear();
   }
 
   // Initialize when DOM is ready
