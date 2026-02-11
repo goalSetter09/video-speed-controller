@@ -21,12 +21,21 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 // Listen for messages from content scripts or popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('[Video Speed Controller] Message received:', request);
-  
-  // Handle future message-based features here
-  // For now, this is a placeholder for future enhancements
-  
-  return true; // Keep the message channel open for async response
+  // Forward speed commands from child frames (iframes) to the top frame
+  if (request.type === 'FORWARD_SPEED_COMMAND') {
+    if (sender.tab && sender.tab.id != null) {
+      chrome.tabs.sendMessage(
+        sender.tab.id,
+        request,
+        { frameId: 0 }
+      ).catch((error) => {
+        console.warn('[Video Speed Controller] Failed to relay command to top frame:', error);
+      });
+    }
+    return false;
+  }
+
+  return false;
 });
 
 console.log('[Video Speed Controller] Background service worker initialized');

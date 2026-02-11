@@ -20,6 +20,17 @@
   const MIN_SPEED = 0.1;
   const MAX_SPEED = 16.0;
 
+  // Cross-frame message types for iframe keyboard forwarding
+  const MESSAGE_TYPES = {
+    FORWARD_SPEED_COMMAND: 'FORWARD_SPEED_COMMAND'
+  };
+
+  const COMMANDS = {
+    DECREASE: 'decrease',
+    INCREASE: 'increase',
+    TOGGLE: 'toggle'
+  };
+
   // State
   let preferredSpeed = DEFAULTS[STORAGE_KEYS.PREFERRED_SPEED];
   let overlayContainer = null;
@@ -385,14 +396,36 @@
     }
   }
 
+  // Check if this script is running in the top frame (safe for cross-origin iframes)
+  let isTopFrame;
+  try {
+    isTopFrame = window === window.top;
+  } catch (e) {
+    isTopFrame = false;
+  }
+
+  /**
+   * Execute a speed command on a video element
+   */
+  function executeCommand(video, command) {
+    if (command === COMMANDS.DECREASE) {
+      return VideoController.changeSpeed(video, -SPEED_STEP);
+    } else if (command === COMMANDS.INCREASE) {
+      return VideoController.changeSpeed(video, SPEED_STEP);
+    } else if (command === COMMANDS.TOGGLE) {
+      return VideoController.togglePreferredSpeed(video, preferredSpeed);
+    }
+    return null;
+  }
+
   /**
    * Handle keyboard events for speed control
    */
   function handleKeydown(event) {
     // Don't interfere if user is typing in an input field
     const target = event.target;
-    if (target.tagName === 'INPUT' || 
-        target.tagName === 'TEXTAREA' || 
+    if (target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
         target.isContentEditable) {
       return;
     }
@@ -408,41 +441,44 @@
       return;
     }
 
-    // Find active video element
-    const video = VideoController.findActiveVideo();
-    if (!video) return;
-
-    let newSpeed = null;
-    let shouldHandle = false;
-
-    // Decrease speed: Comma key
+    // Map key to command
+    let command = null;
     if (code === 'Comma' || key === ',' || key === '<') {
-      newSpeed = VideoController.changeSpeed(video, -SPEED_STEP);
-      shouldHandle = true;
-    }
-    // Increase speed: Period key
-    else if (code === 'Period' || key === '.' || key === '>') {
-      newSpeed = VideoController.changeSpeed(video, SPEED_STEP);
-      shouldHandle = true;
-    }
-    // Toggle preferred speed: R key (without modifiers)
-    else if (code === 'KeyR' || key === 'r' || key === 'R') {
-      // Only handle if no modifier keys are pressed
-      if (!event.shiftKey && !event.altKey) {
-        newSpeed = VideoController.togglePreferredSpeed(video, preferredSpeed);
-        shouldHandle = true;
-      }
+      command = COMMANDS.DECREASE;
+    } else if (code === 'Period' || key === '.' || key === '>') {
+      command = COMMANDS.INCREASE;
+    } else if ((code === 'KeyR' || key === 'r' || key === 'R') && !event.shiftKey && !event.altKey) {
+      command = COMMANDS.TOGGLE;
     }
 
-    if (shouldHandle && newSpeed !== null) {
-      // Prevent default action and stop propagation to avoid site shortcut conflicts
+    if (!command) return;
+
+    // Try to find a local video in this frame
+    const video = VideoController.findActiveVideo();
+
+    if (video) {
+      // Handle locally - video exists in this frame
+      const newSpeed = executeCommand(video, command);
+
+      if (newSpeed !== null) {
+        event.preventDefault();
+        event.stopPropagation();
+        OverlayUI.updateSpeed(video, newSpeed, true);
+        console.log(`[Video Speed Controller] Speed changed to ${newSpeed.toFixed(1)}x`);
+      }
+    } else if (!isTopFrame) {
+      // No local video AND we're in a child frame - forward to top frame
       event.preventDefault();
       event.stopPropagation();
-      
-      // Update overlay with new speed (with highlight effect)
-      OverlayUI.updateSpeed(video, newSpeed, true);
-      
-      console.log(`[Video Speed Controller] Speed changed to ${newSpeed.toFixed(1)}x`);
+
+      try {
+        chrome.runtime.sendMessage({
+          type: MESSAGE_TYPES.FORWARD_SPEED_COMMAND,
+          command: command
+        });
+      } catch (error) {
+        console.warn('[Video Speed Controller] Failed to forward command:', error);
+      }
     }
   }
 
@@ -561,6 +597,23 @@
 
       // Add keyboard listener
       document.addEventListener('keydown', handleKeydown, true); // Use capture phase
+
+      // In the top frame, listen for forwarded commands from child frames (iframes)
+      if (isTopFrame) {
+        chrome.runtime.onMessage.addListener((request) => {
+          if (request.type !== MESSAGE_TYPES.FORWARD_SPEED_COMMAND) return;
+
+          const video = VideoController.findActiveVideo();
+          if (!video) return;
+
+          const newSpeed = executeCommand(video, request.command);
+
+          if (newSpeed !== null) {
+            OverlayUI.updateSpeed(video, newSpeed, true);
+            console.log(`[Video Speed Controller] Speed changed to ${newSpeed.toFixed(1)}x (from child frame)`);
+          }
+        });
+      }
 
       console.log('[Video Speed Controller] Initialized');
     } catch (error) {
