@@ -17,9 +17,9 @@
 ## 3. System Architecture Design
 
 ### Top-Level building blocks
-- **콘텐츠 스크립트 (`content.js`)**
+- **콘텐츠 스크립트 (`src/content/*.js`)**
   - 웹 페이지에 직접 주입되어 페이지의 DOM에 접근하고 조작합니다.
-  - 하위 구성 요소: 키보드 이벤트 리스너, 비디오 요소 탐색 및 제어 로직, 속도 표시 오버레이 UI 생성 및 관리 로직.
+  - 하위 구성 요소: `state.js`, `video-controller.js`, `overlay-manager.js`, `video-tracker.js`, `keyboard-handler.js`, `bootstrap.js`.
 - **팝업 UI (`popup.html`, `popup.js`)**
   - 사용자가 확장 프로그램 아이콘을 클릭했을 때 나타나는 인터페이스입니다.
   - 하위 구성 요소: 선호 속도 입력을 위한 HTML 폼, 설정 저장을 위한 JavaScript 로직.
@@ -66,7 +66,7 @@ graph TD
 - **Shared Components**: 본 프로젝트의 규모가 작으므로, 별도의 공유 모듈보다는 각 스크립트 내에서 필요한 유틸리티 함수를 정의하여 단순성을 유지합니다.
 
 **Universal File & Folder Structure**
-```
+``` 
 /
 ├── manifest.json
 ├── icons/
@@ -74,9 +74,17 @@ graph TD
 │   ├── icon48.png
 │   └── icon128.png
 ├── src/
+│   ├── shared/
+│   │   ├── config.js
+│   │   ├── messages.js
+│   │   └── storage.js
 │   ├── content/
-│   │   ├── content.js
-│   │   └── content.css
+│   │   ├── state.js
+│   │   ├── video-controller.js
+│   │   ├── overlay-manager.js
+│   │   ├── video-tracker.js
+│   │   ├── keyboard-handler.js
+│   │   └── bootstrap.js
 │   ├── popup/
 │   │   ├── popup.html
 │   │   ├── popup.js
@@ -92,8 +100,8 @@ graph TD
 - **External Service Integration**: 해당 없음.
 - **Real-time Communication**: 해당 없음.
 - **Data Synchronization**:
-  - **팝업 -> 저장소**: `popup.js`에서 사용자가 선호 속도를 저장하면 `chrome.storage.set()`을 호출하여 데이터를 기록합니다.
-  - **콘텐츠 스크립트 <- 저장소**: `content.js`는 초기화 시 또는 'r' 키를 누를 때 `chrome.storage.get()`을 호출하여 저장된 선호 속도 값을 가져옵니다.
+- **팝업 -> 저장소**: `popup.js`에서 사용자가 선호 속도를 저장하면 `storage.js`를 통해 `chrome.storage.set()`이 호출됩니다.
+- **콘텐츠 스크립트 <- 저장소**: `bootstrap.js`는 초기화 시 `storage.js`를 통해 저장된 선호 속도를 읽고, 변경 이벤트를 구독합니다.
 
 ## 4. Performance & Optimization Strategy
 - **효율적인 이벤트 리스너 관리**: 키보드 이벤트 리스너는 페이지 내에 `<video>` 요소가 존재할 경우에만 활성화하여 불필요한 자원 소모를 방지합니다. 또한, 비디오 요소가 포커스되지 않았을 때는 이벤트를 처리하지 않고 통과시켜 사이트 고유 단축키와의 충돌을 최소화합니다.

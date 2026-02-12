@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Video Speed Controller",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Control video playback speed with keyboard shortcuts. Press ',' to slow down, '.' to speed up, and 'r' to toggle preferred speed.",
   "permissions": [
     "storage",
@@ -17,9 +17,20 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*/*"],
-      "js": ["src/content/content.js"],
-      "css": ["src/content/content.css"],
+      "matches": [
+        "*://*/*"
+      ],
+      "js": [
+        "src/shared/config.js",
+        "src/shared/messages.js",
+        "src/shared/storage.js",
+        "src/content/state.js",
+        "src/content/video-controller.js",
+        "src/content/overlay-manager.js",
+        "src/content/video-tracker.js",
+        "src/content/keyboard-handler.js",
+        "src/content/bootstrap.js"
+      ],
       "run_at": "document_end",
       "all_frames": true
     }

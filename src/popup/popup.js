@@ -1,101 +1,75 @@
-/**
- * Video Speed Controller - Popup Script
- * 
- * Handles the popup UI for configuring the preferred speed setting.
- */
+(() => {
+  const root = globalThis;
+  const VSC = root.__VSC__ || (root.__VSC__ = {});
+  const { CONFIG, Storage } = VSC;
 
-// Constants
-const STORAGE_KEYS = {
-  PREFERRED_SPEED: 'preferredSpeed'
-};
+  const preferredSpeedInput = document.getElementById('preferred-speed');
+  const saveButton = document.getElementById('save-button');
+  const statusMessage = document.getElementById('status-message');
 
-const DEFAULTS = {
-  [STORAGE_KEYS.PREFERRED_SPEED]: 1.8
-};
+  function showStatus(message, type) {
+    statusMessage.textContent = message;
+    statusMessage.className = `status-message ${type}`;
+    statusMessage.style.display = 'block';
 
-// DOM Elements
-const preferredSpeedInput = document.getElementById('preferred-speed');
-const saveButton = document.getElementById('save-button');
-const statusMessage = document.getElementById('status-message');
-
-/**
- * Initialize the popup
- */
-async function initialize() {
-  try {
-    // Load current preferred speed from storage
-    const data = await chrome.storage.local.get(DEFAULTS);
-    const preferredSpeed = data[STORAGE_KEYS.PREFERRED_SPEED];
-    
-    // Update input field
-    preferredSpeedInput.value = preferredSpeed.toFixed(1);
-
-    // Add event listeners
-    saveButton.addEventListener('click', saveSettings);
-    preferredSpeedInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        saveSettings();
-      }
-    });
-
-    console.log('[Video Speed Controller] Popup initialized');
-  } catch (error) {
-    console.error('[Video Speed Controller] Popup initialization error:', error);
-    showStatus('Error loading settings', 'error');
+    setTimeout(() => {
+      statusMessage.style.display = 'none';
+    }, 3000);
   }
-}
 
-/**
- * Save the preferred speed setting
- */
-async function saveSettings() {
-  try {
-    const speed = parseFloat(preferredSpeedInput.value);
-
-    // Validate input
-    if (isNaN(speed) || speed < 0.1 || speed > 5.0) {
-      showStatus('Please enter a speed between 0.1 and 5.0', 'error');
-      return;
+  function parseAndValidatePreferredSpeed() {
+    const parsed = Number.parseFloat(preferredSpeedInput.value);
+    if (!Number.isFinite(parsed)) {
+      return { valid: false, reason: 'Please enter a valid number.' };
     }
 
-    // Save to storage
-    await chrome.storage.local.set({
-      [STORAGE_KEYS.PREFERRED_SPEED]: speed
-    });
+    if (parsed < CONFIG.POPUP_MIN_PREFERRED_SPEED || parsed > CONFIG.POPUP_MAX_PREFERRED_SPEED) {
+      return {
+        valid: false,
+        reason: `Please enter a speed between ${CONFIG.POPUP_MIN_PREFERRED_SPEED.toFixed(1)} and ${CONFIG.POPUP_MAX_PREFERRED_SPEED.toFixed(1)}.`
+      };
+    }
 
-    // Show success message
-    showStatus('Settings saved!', 'success');
-    
-    console.log('[Video Speed Controller] Preferred speed saved:', speed);
-  } catch (error) {
-    console.error('[Video Speed Controller] Error saving settings:', error);
-    showStatus('Error saving settings', 'error');
+    return { valid: true, value: parsed };
   }
-}
 
-/**
- * Show a status message
- */
-function showStatus(message, type = 'info') {
-  statusMessage.textContent = message;
-  statusMessage.className = `status-message ${type}`;
-  statusMessage.style.display = 'block';
+  async function saveSettings() {
+    try {
+      const result = parseAndValidatePreferredSpeed();
+      if (!result.valid) {
+        showStatus(result.reason, 'error');
+        return;
+      }
 
-  // Auto-hide after 3 seconds
-  setTimeout(() => {
-    statusMessage.style.display = 'none';
-  }, 3000);
-}
+      const saved = await Storage.setPreferredSpeed(result.value);
+      preferredSpeedInput.value = saved.toFixed(1);
+      showStatus('Settings saved!', 'success');
+    } catch (error) {
+      console.error(`${CONFIG.LOG_PREFIX} Error saving settings:`, error);
+      showStatus('Error saving settings', 'error');
+    }
+  }
 
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initialize);
-} else {
-  initialize();
-}
+  async function initialize() {
+    try {
+      const preferredSpeed = await Storage.getPreferredSpeed();
+      preferredSpeedInput.value = preferredSpeed.toFixed(1);
 
+      saveButton.addEventListener('click', saveSettings);
+      preferredSpeedInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          saveSettings();
+        }
+      });
+    } catch (error) {
+      console.error(`${CONFIG.LOG_PREFIX} Popup initialization error:`, error);
+      showStatus('Error loading settings', 'error');
+    }
+  }
 
-
-
-
-
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initialize, { once: true });
+  } else {
+    initialize();
+  }
+})();

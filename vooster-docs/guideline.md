@@ -2,7 +2,7 @@
 
 ## 1. Project Overview
 
-This document establishes the official coding standards for the Video Speed Controller, a lightweight Chrome Extension built with Manifest V3. The project's architecture is centered around three isolated components: a **Content Script** (`content.js`) for DOM manipulation and event handling, a **Popup UI** (`popup.js`) for user configuration, and a minimal **Background Service Worker** (`background.js`).
+This document establishes the official coding standards for the Video Speed Controller, a lightweight Chrome Extension built with Manifest V3. The project's architecture is centered around three isolated components: a **Content Script module set** (`src/content/*.js`) for DOM manipulation and event handling, a **Popup UI** (`popup.js`) for user configuration, and a minimal **Background Service Worker** (`background.js`).
 
 The core technology stack consists of pure JavaScript (ES6), HTML5, and CSS3, with `chrome.storage.local` serving as the sole persistence layer. The primary architectural goals are performance, minimal footprint, and clear separation of concerns between the extension's components.
 
@@ -21,9 +21,17 @@ All source code **MUST** reside within the `/src` directory, following the struc
 
 ```
 /src/
+├── shared/
+│   ├── config.js       # Shared constants and defaults
+│   ├── messages.js     # Shared message/command types
+│   └── storage.js      # Shared Chrome storage helpers
 ├── content/
-│   ├── content.js      # Logic for video control and overlay
-│   └── content.css     # Styles for the speed overlay
+│   ├── state.js        # Runtime state container
+│   ├── video-controller.js
+│   ├── overlay-manager.js
+│   ├── video-tracker.js
+│   ├── keyboard-handler.js
+│   └── bootstrap.js
 ├── popup/
 │   ├── popup.html      # Markup for the popup
 │   ├── popup.js        # Logic for the popup UI and storage
@@ -36,7 +44,7 @@ All source code **MUST** reside within the `/src` directory, following the struc
 
 This project **MUST NOT** use any external JavaScript libraries or frameworks to maintain a minimal footprint and optimal performance.
 
-Communication between the extension's components (e.g., `popup.js` and `content.js`) **MUST** be achieved asynchronously via `chrome.storage` API, not direct function calls or shared state.
+Communication between the extension's components (e.g., `popup.js` and `bootstrap.js`) **MUST** be achieved asynchronously via `chrome.storage` API, not direct function calls or shared state.
 
 ### Error Handling Patterns
 
@@ -119,7 +127,7 @@ function updateVideoSpeed(videoElement, newSpeed) {
     *   *Rationale*: `var` has function-scoping rules that can lead to unexpected behavior. `let` and `const` provide block-scoping, which is more predictable.
 
 2.  **Do not write large, monolithic files or functions.**
-    *   *Rationale*: Large blocks of code are difficult to read, debug, and maintain. Break down files like `content.js` into logical sections using comments or helper objects.
+    *   *Rationale*: Large blocks of code are difficult to read, debug, and maintain. Break down content logic into dedicated modules such as `video-controller.js` and `keyboard-handler.js`.
 
 3.  **Do not use inline styles or inline event handlers in HTML.**
     *   *Rationale*: This violates the separation of concerns (HTML, CSS, JS) and is blocked by Manifest V3's Content Security Policy (CSP). Always use `.css` files and `element.addEventListener()`.
@@ -148,10 +156,10 @@ function updateVideoSpeed(videoElement, newSpeed) {
 
 ### Component/Module Structure
 
-Within each script (e.g., `content.js`), logic should be grouped into conceptual modules using plain objects or functions. This improves organization without adding complexity.
+Within content modules (e.g., `video-controller.js`), logic should be grouped into conceptual modules using plain objects or functions. This improves organization without adding complexity.
 
 ```javascript
-// MUST: In content.js, group related logic into objects.
+// MUST: In content modules, group related logic into objects.
 const VideoController = {
   get videoElement() {
     return document.querySelector('video');
@@ -181,7 +189,7 @@ document.addEventListener('keydown', (event) => {
 The data flow for settings is unidirectional and asynchronous, ensuring a clear and predictable state management pattern.
 
 1.  **Write**: The user interacts with `popup.html`. `popup.js` validates the input and writes the new setting to `chrome.storage.local`.
-2.  **Read**: `content.js` reads the setting from `chrome.storage.local` during its initialization and whenever the "toggle preferred speed" key is pressed.
+2.  **Read**: `bootstrap.js` reads the setting from `chrome.storage.local` during initialization and shares it with content modules.
 
 ### State Management
 
@@ -202,7 +210,7 @@ async function savePreferredSpeed(speed) {
   await chrome.storage.local.set({ [STORAGE_KEYS.PREFERRED_SPEED]: speed });
 }
 
-// In content.js - Reading from storage
+// In bootstrap.js - Reading from storage
 async function getPreferredSpeed() {
   const data = await chrome.storage.local.get(DEFAULTS);
   return data[STORAGE_KEYS.PREFERRED_SPEED];

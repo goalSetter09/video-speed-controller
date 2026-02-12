@@ -1,47 +1,35 @@
-/**
- * Video Speed Controller - Background Service Worker
- * 
- * Minimal background script for Manifest V3 compatibility.
- * Handles extension lifecycle events.
- */
+self.importScripts('../shared/config.js', '../shared/messages.js', '../shared/storage.js');
 
-// Listen for extension installation
-chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === 'install') {
-    console.log('[Video Speed Controller] Extension installed');
-    
-    // Set default preferred speed on first install
-    chrome.storage.local.set({
-      preferredSpeed: 1.8
-    });
-  } else if (details.reason === 'update') {
-    console.log('[Video Speed Controller] Extension updated');
-  }
-});
+(() => {
+  const root = globalThis;
+  const VSC = root.__VSC__ || (root.__VSC__ = {});
+  const { CONFIG, MESSAGES, Storage } = VSC;
 
-// Listen for messages from content scripts or popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  // Forward speed commands from child frames (iframes) to the top frame
-  if (request.type === 'FORWARD_SPEED_COMMAND') {
-    if (sender.tab && sender.tab.id != null) {
-      chrome.tabs.sendMessage(
-        sender.tab.id,
-        request,
-        { frameId: 0 }
-      ).catch((error) => {
-        console.warn('[Video Speed Controller] Failed to relay command to top frame:', error);
-      });
+  chrome.runtime.onInstalled.addListener((details) => {
+    if (details.reason !== 'install') return;
+
+    (async () => {
+      try {
+        await Storage.setPreferredSpeed(CONFIG.DEFAULTS[CONFIG.STORAGE_KEYS.PREFERRED_SPEED]);
+      } catch (error) {
+        console.warn(`${CONFIG.LOG_PREFIX} Failed to initialize preferred speed:`, error);
+      }
+    })();
+  });
+
+  chrome.runtime.onMessage.addListener((request, sender) => {
+    if (request?.type !== MESSAGES.FORWARD_SPEED_COMMAND) {
+      return false;
     }
+
+    if (sender.tab?.id == null) {
+      return false;
+    }
+
+    chrome.tabs.sendMessage(sender.tab.id, request, { frameId: 0 }).catch((error) => {
+      console.warn(`${CONFIG.LOG_PREFIX} Failed to relay command to top frame:`, error);
+    });
+
     return false;
-  }
-
-  return false;
-});
-
-console.log('[Video Speed Controller] Background service worker initialized');
-
-
-
-
-
-
+  });
+})();

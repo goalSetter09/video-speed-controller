@@ -4,106 +4,75 @@ A lightweight Chrome extension that lets online learners precisely control video
 
 ## Features
 
-- **Fine-grained speed control**: Adjust video playback speed in 0.1× increments
-- **Keyboard shortcuts**: Control speed without touching the mouse
-  - `,` (comma): Decrease speed by 0.1×
-  - `.` (period): Increase speed by 0.1×
-  - `r`: Toggle between current speed and your preferred speed
-- **Visual feedback**: Minimal overlay shows current speed for 1.2 seconds
-- **Customizable**: Set your preferred speed through the extension popup
-- **Privacy-friendly**: No external network calls, all data stored locally
-- **Lightweight**: Minimal CPU and memory footprint
+- Fine-grained speed control in 0.1x increments
+- Keyboard shortcuts:
+  - `,` (comma): Decrease speed by 0.1x
+  - `.` (period): Increase speed by 0.1x
+  - `r`: Toggle between 1.0x and preferred speed
+- Overlay feedback rendered above the active video
+- Preferred speed persisted in `chrome.storage.local`
+- No external network calls
 
 ## Installation (Development Mode)
 
-1. Clone or download this repository
-2. Open Chrome and navigate to `chrome://extensions/`
-3. Enable "Developer mode" in the top right corner
-4. Click "Load unpacked"
-5. Select the project root directory (`video-speed-controller/`)
+1. Open `chrome://extensions/`
+2. Enable Developer mode
+3. Click Load unpacked
+4. Select this project root directory
 
 ## Usage
 
-### Keyboard Shortcuts
-
-- **`,` (comma) or `<`**: Decrease playback speed by 0.1×
-- **`.` (period) or `>`**: Increase playback speed by 0.1×
-- **`r`**: Toggle between current speed and your preferred speed (default: 1.8×)
-  - Note: `Command+R` (Mac) or `Ctrl+R` (Windows) will still refresh the page as normal
-
-### Configuring Preferred Speed
-
-1. Click the extension icon in your browser toolbar
-2. Enter your desired preferred speed (0.1× to 5.0×)
-3. Click "Save"
-
-The preferred speed will be used when you press the `r` key to toggle.
+1. Open any page with an HTML5 video
+2. Use `,`, `.`, and `r` to control playback speed
+3. Click the extension icon to set your preferred speed (0.1 to 5.0)
 
 ## Project Structure
 
-```
+```text
 video-speed-controller/
-├── manifest.json              # Extension manifest (Manifest V3)
-├── icons/                     # Extension icons
-│   ├── icon16.png
-│   ├── icon48.png
-│   └── icon128.png
+├── manifest.json
+├── icons/
 └── src/
-    ├── content/               # Content script (runs on web pages)
-    │   ├── content.js         # Video control logic
-    │   └── content.css        # Overlay styles
-    ├── popup/                 # Extension popup UI
-    │   ├── popup.html         # Popup markup
-    │   ├── popup.js           # Popup logic
-    │   └── popup.css          # Popup styles
-    └── background/            # Background service worker
-        └── background.js      # Extension lifecycle management
+    ├── shared/
+    │   ├── config.js            # Shared constants and defaults
+    │   ├── messages.js          # Cross-context message and command types
+    │   └── storage.js           # Shared storage helpers
+    ├── content/
+    │   ├── state.js             # Runtime state container
+    │   ├── video-controller.js  # Video selection and speed control
+    │   ├── overlay-manager.js   # Shadow DOM overlay lifecycle
+    │   ├── video-tracker.js     # Video discovery and lifecycle listeners
+    │   ├── keyboard-handler.js  # Shortcut parsing and command dispatch
+    │   └── bootstrap.js         # Content script initialization/cleanup
+    ├── popup/
+    │   ├── popup.html
+    │   ├── popup.css
+    │   └── popup.js
+    └── background/
+        └── background.js
 ```
 
 ## Technical Details
 
-- **Manifest Version**: V3
-- **Permissions**: `storage`, `scripting`
-- **Host Permissions**: `*://*/*` (runs on all websites)
-- **Technology Stack**: Pure JavaScript (ES6), HTML5, CSS3
-- **Storage**: Chrome Storage API (`local`)
+- Manifest: V3
+- Permissions: `storage`, `scripting`
+- Host permissions: `*://*/*`
+- Stack: JavaScript (ES6), HTML, CSS
 
-## Development
+## Regression Checklist
 
-### Testing
+- `,` and `.` update speed in 0.1 steps
+- `r` toggles between preferred speed and 1.0x
+- `Cmd/Ctrl + R` continues to refresh page
+- Shortcuts do not trigger while typing in inputs/textareas/contenteditable
+- Overlay displays current speed and highlights briefly after changes
+- Fullscreen entry/exit keeps overlay visible and correctly positioned
+- Dynamic video elements are detected and handled
+- Commands from child iframes are forwarded to top frame video
+- Popup save updates preferred speed used by content scripts
 
-1. Load the extension in developer mode (see Installation section)
-2. Navigate to any website with HTML5 video (e.g., YouTube, Udemy, Coursera)
-3. Use the keyboard shortcuts to control playback speed
-4. Check the browser console for any errors (`Ctrl+Shift+J` or `Cmd+Option+J`)
+## Debugging
 
-### Debugging
-
-- **Content Script**: Open the browser console on the web page
-- **Popup**: Right-click the extension icon → "Inspect popup"
-- **Background Worker**: Go to `chrome://extensions/` → Click "Inspect views: service worker"
-
-## Browser Compatibility
-
-- Chrome (Manifest V3)
-- Chromium-based browsers (Edge, Brave, Opera, etc.)
-
-## Future Enhancements
-
-- Site-specific speed presets
-- Badge text showing current speed
-- Real-time speed updates from popup
-- Firefox port
-- Cloud sync via Chrome sync storage
-
-## License
-
-This project is for personal use.
-
-## Contributing
-
-This is a personal learning project. Feel free to fork and modify for your own use.
-
-## Support
-
-For issues or questions, please open an issue on the project repository.
+- Content script: page DevTools console
+- Popup: right-click extension icon -> Inspect popup
+- Background worker: `chrome://extensions/` -> Inspect views: service worker
