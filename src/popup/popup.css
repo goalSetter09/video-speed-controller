@@ -1,51 +1,89 @@
-/**
- * Video Speed Controller - Popup Styles
- */
-
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+:root {
+  --bg: #f7f4ea;
+  --ink: #101010;
+  --panel: #fffef8;
+  --accent-blue: #22a7f0;
+  --accent-yellow: #ffd233;
+  --accent-red: #ff5d5d;
+  --accent-green: #3ad97a;
+  --shadow-main: 6px 6px 0 var(--ink);
+  --shadow-small: 3px 3px 0 var(--ink);
+}
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  width: 320px;
+  font-family: "Trebuchet MS", "Segoe UI", Arial, sans-serif;
+  width: 340px;
   padding: 0;
-  background-color: #f5f5f5;
+  color: var(--ink);
+  background:
+    linear-gradient(135deg, rgba(255, 210, 51, 0.28), transparent 45%),
+    linear-gradient(310deg, rgba(34, 167, 240, 0.2), transparent 42%),
+    var(--bg);
 }
 
 .container {
-  padding: 20px;
+  padding: 16px;
 }
 
 h1 {
   font-size: 18px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 20px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: 14px;
+  background: var(--accent-yellow);
+  border: 3px solid var(--ink);
+  padding: 8px 10px;
+  box-shadow: var(--shadow-small);
+}
+
+h1::before {
+  content: "◼";
+  display: inline-block;
+  margin-right: 8px;
+  color: var(--accent-blue);
+  text-shadow: 1px 1px 0 var(--ink);
 }
 
 h2 {
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: 10px;
 }
 
-.settings-section {
-  background-color: #ffffff;
-  padding: 16px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+h2::before {
+  content: "◆";
+  display: inline-block;
+  margin-right: 6px;
+  color: var(--accent-red);
+}
+
+.settings-section,
+.shortcuts-section {
+  background: var(--panel);
+  border: 3px solid var(--ink);
+  box-shadow: var(--shadow-main);
+  padding: 14px;
+  margin-bottom: 14px;
 }
 
 label {
   display: block;
-  font-size: 14px;
-  font-weight: 500;
-  color: #555;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ink);
   margin-bottom: 8px;
 }
 
@@ -55,121 +93,130 @@ label {
   gap: 8px;
 }
 
-input[type="number"] {
-  flex: 1;
-  padding: 8px 12px;
-  font-size: 16px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+input[type="number"],
+input[type="text"] {
+  border: 3px solid var(--ink);
+  background: #ffffff;
+  color: var(--ink);
   outline: none;
-  transition: border-color 0.2s;
+  font-weight: 800;
+  box-shadow: 0 0 0 transparent;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
 }
 
-input[type="number"]:focus {
-  border-color: #4285f4;
+input[type="number"] {
+  flex: 1;
+  min-height: 40px;
+  padding: 8px 10px;
+  font-size: 18px;
+}
+
+input[type="text"] {
+  width: 44px;
+  height: 40px;
+  padding: 6px;
+  text-align: center;
+  font-size: 17px;
+  text-transform: lowercase;
+}
+
+input[type="number"]:focus,
+input[type="text"]:focus {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--ink);
+  background: #f2fbff;
 }
 
 .unit {
+  min-width: 32px;
+  text-align: center;
   font-size: 16px;
-  font-weight: 500;
-  color: #666;
+  font-weight: 900;
+  color: var(--ink);
+  background: var(--accent-blue);
+  border: 3px solid var(--ink);
+  padding: 7px 0;
 }
 
 .help-text {
-  font-size: 12px;
-  color: #888;
   margin-top: 8px;
-  line-height: 1.4;
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 700;
+  color: #252525;
 }
 
 #save-button {
   width: 100%;
-  padding: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #ffffff;
-  background-color: #4285f4;
-  border: none;
-  border-radius: 6px;
+  min-height: 44px;
+  border: 3px solid var(--ink);
+  background: var(--accent-blue);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: background-color 0.2s;
-  margin-bottom: 16px;
+  box-shadow: var(--shadow-main);
+  margin-bottom: 14px;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.08s ease;
 }
 
 #save-button:hover {
-  background-color: #3367d6;
+  background: #64c9fb;
 }
 
 #save-button:active {
-  background-color: #2451b8;
+  transform: translate(4px, 4px);
+  box-shadow: 2px 2px 0 var(--ink);
 }
 
-.shortcuts-section {
-  background-color: #ffffff;
-  padding: 16px;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px;
+  border: 2px solid var(--ink);
+  background: #fffde8;
+  margin-top: 8px;
 }
 
-.shortcuts-list {
-  list-style: none;
-}
-
-.shortcuts-list li {
-  padding: 8px 0;
-  font-size: 13px;
-  color: #555;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.shortcuts-list li:last-child {
-  border-bottom: none;
-}
-
-kbd {
-  display: inline-block;
-  padding: 2px 8px;
-  font-family: monospace;
+.shortcut-row label {
+  margin-bottom: 0;
   font-size: 12px;
-  font-weight: 600;
-  color: #333;
-  background-color: #f0f0f0;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  margin-right: 8px;
-  min-width: 24px;
-  text-align: center;
+}
+
+.shortcut-row label::before {
+  content: "●";
+  display: inline-block;
+  margin-right: 6px;
+  color: var(--accent-blue);
 }
 
 .status-message {
   display: none;
-  padding: 12px;
-  margin-top: 16px;
-  border-radius: 6px;
-  font-size: 13px;
+  margin-top: 12px;
+  padding: 10px;
+  border: 3px solid var(--ink);
+  font-size: 12px;
+  font-weight: 900;
   text-align: center;
+  letter-spacing: 0.02em;
+  box-shadow: var(--shadow-small);
 }
 
 .status-message.success {
-  background-color: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
+  background: var(--accent-green);
+  color: var(--ink);
 }
 
 .status-message.error {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+  background: var(--accent-red);
+  color: var(--ink);
 }
 
 .status-message.info {
-  background-color: #d1ecf1;
-  color: #0c5460;
-  border: 1px solid #bee5eb;
+  background: var(--accent-yellow);
+  color: var(--ink);
 }
-
-
-
-
-
-

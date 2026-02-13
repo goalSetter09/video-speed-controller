@@ -21,37 +21,33 @@
     styleElement.textContent = `
       .vsc-overlay {
         position: absolute;
-        top: 10px;
-        left: 10px;
-        background-color: rgba(0, 0, 0, 0.6);
-        color: #ffffff;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-        font-size: 13px;
-        font-weight: 600;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+        top: 12px;
+        left: 12px;
+        background: #ffd233;
+        color: #101010;
+        border: 3px solid #101010;
+        padding: 6px 10px;
+        border-radius: 0;
+        font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif;
+        font-size: 14px;
+        font-weight: 900;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        box-shadow: 4px 4px 0 #101010;
         pointer-events: none;
         user-select: none;
         z-index: 2147483647;
         white-space: nowrap;
-        opacity: 0.5;
+        opacity: 0.62;
         visibility: visible;
-        transition: opacity 0.2s ease;
+        transform: translate(0, 0) rotate(-1deg);
+        transition: opacity 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
       }
 
       .vsc-overlay.highlight {
-        opacity: 0.85;
-        transform: scale(1.05);
-        transition: opacity 0.2s ease, transform 0.2s ease;
-      }
-
-      @media (prefers-color-scheme: dark) {
-        .vsc-overlay {
-          background-color: rgba(255, 255, 255, 0.6);
-          color: #000000;
-          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-        }
+        opacity: 0.95;
+        transform: translate(-1px, -1px) rotate(0deg);
+        box-shadow: 6px 6px 0 #101010;
       }
     `;
 
