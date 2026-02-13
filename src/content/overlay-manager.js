@@ -21,33 +21,32 @@
     styleElement.textContent = `
       .vsc-overlay {
         position: absolute;
-        top: 12px;
-        left: 12px;
-        background: #ffd233;
-        color: #101010;
-        border: 3px solid #101010;
-        padding: 6px 10px;
-        border-radius: 0;
-        font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif;
-        font-size: 14px;
-        font-weight: 900;
-        letter-spacing: 0.03em;
-        text-transform: uppercase;
-        box-shadow: 4px 4px 0 #101010;
+        top: 10px;
+        left: 10px;
+        background: rgba(30, 58, 95, 0.52);
+        color: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        padding: 3px 7px;
+        border-radius: 4px;
+        font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0;
+        text-transform: none;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16);
         pointer-events: none;
         user-select: none;
         z-index: 2147483647;
         white-space: nowrap;
-        opacity: 0.62;
+        opacity: 0.42;
         visibility: visible;
-        transform: translate(0, 0) rotate(-1deg);
-        transition: opacity 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+        transform: translate(0, 0);
+        transition: opacity 0.16s ease, transform 0.16s ease;
       }
 
       .vsc-overlay.highlight {
-        opacity: 0.95;
-        transform: translate(-1px, -1px) rotate(0deg);
-        box-shadow: 6px 6px 0 #101010;
+        opacity: 0.66;
+        transform: translate(0, -1px);
       }
     `;
 
