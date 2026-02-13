@@ -12,6 +12,11 @@
 
   VSC.ContentState = {
     preferredSpeed: CONFIG.DEFAULTS[CONFIG.STORAGE_KEYS.PREFERRED_SPEED],
+    shortcutKeys: {
+      decrease: CONFIG.DEFAULTS[CONFIG.STORAGE_KEYS.DECREASE_SHORTCUT],
+      increase: CONFIG.DEFAULTS[CONFIG.STORAGE_KEYS.INCREASE_SHORTCUT],
+      toggle: CONFIG.DEFAULTS[CONFIG.STORAGE_KEYS.TOGGLE_SHORTCUT]
+    },
     isTopFrame,
     videoElements: new Set(),
     mutationObserver: null,

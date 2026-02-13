@@ -23,18 +23,29 @@
         >
         <span class="unit">x</span>
       </div>
-      <p class="help-text">This speed will be used when you press the 'r' key</p>
+      <p class="help-text">This speed will be used when you press the toggle shortcut key.</p>
     </div>
 
     <button id="save-button">Save</button>
 
     <div class="shortcuts-section">
       <h2>Keyboard Shortcuts</h2>
-      <ul class="shortcuts-list">
-        <li><kbd>,</kbd> Decrease speed by 0.1x</li>
-        <li><kbd>.</kbd> Increase speed by 0.1x</li>
-        <li><kbd>r</kbd> Toggle preferred speed</li>
-      </ul>
+      <p class="help-text">Click each field and press one key.</p>
+
+      <div class="shortcut-row">
+        <label for="shortcut-decrease">Decrease (0.1x)</label>
+        <input type="text" id="shortcut-decrease" maxlength="1" autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="shortcut-row">
+        <label for="shortcut-increase">Increase (0.1x)</label>
+        <input type="text" id="shortcut-increase" maxlength="1" autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="shortcut-row">
+        <label for="shortcut-toggle">Toggle preferred speed</label>
+        <input type="text" id="shortcut-toggle" maxlength="1" autocomplete="off" spellcheck="false">
+      </div>
     </div>
 
     <div class="status-message" id="status-message"></div>

@@ -6,6 +6,7 @@
   async function initialize() {
     try {
       ContentState.preferredSpeed = await Storage.getPreferredSpeed();
+      ContentState.shortcutKeys = await Storage.getShortcutKeys();
 
       VideoTracker.setupVideoTracking();
       KeyboardHandler.bindKeyboard();
@@ -23,16 +24,32 @@
         if (area !== 'local') return;
 
         const speedChange = changes[CONFIG.STORAGE_KEYS.PREFERRED_SPEED];
-        if (!speedChange) return;
-
-        const nextValue = speedChange.newValue;
-        if (typeof nextValue === 'number' && Number.isFinite(nextValue)) {
-          ContentState.preferredSpeed = Storage.clamp(
-            nextValue,
-            CONFIG.MIN_PLAYBACK_SPEED,
-            CONFIG.MAX_PLAYBACK_SPEED
-          );
+        if (speedChange) {
+          const nextValue = speedChange.newValue;
+          if (typeof nextValue === 'number' && Number.isFinite(nextValue)) {
+            ContentState.preferredSpeed = Storage.clamp(
+              nextValue,
+              CONFIG.MIN_PLAYBACK_SPEED,
+              CONFIG.MAX_PLAYBACK_SPEED
+            );
+          }
         }
+
+        const shortcutKeysChanged = Boolean(
+          changes[CONFIG.STORAGE_KEYS.DECREASE_SHORTCUT]
+          || changes[CONFIG.STORAGE_KEYS.INCREASE_SHORTCUT]
+          || changes[CONFIG.STORAGE_KEYS.TOGGLE_SHORTCUT]
+        );
+
+        if (!shortcutKeysChanged) return;
+
+        Storage.getShortcutKeys()
+          .then((shortcutKeys) => {
+            ContentState.shortcutKeys = shortcutKeys;
+          })
+          .catch((error) => {
+            console.error(`${CONFIG.LOG_PREFIX} Failed to sync shortcut keys:`, error);
+          });
       };
 
       chrome.storage.onChanged.addListener(ContentState.onStorageChanged);

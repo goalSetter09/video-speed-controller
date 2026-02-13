@@ -1,24 +1,58 @@
 (() => {
   const root = globalThis;
   const VSC = root.__VSC__ || (root.__VSC__ = {});
-  const { CONFIG, MESSAGES, COMMANDS, ContentState, VideoController, OverlayManager } = VSC;
+  const {
+    CONFIG,
+    MESSAGES,
+    COMMANDS,
+    ContentState,
+    Storage,
+    VideoController,
+    OverlayManager
+  } = VSC;
 
-  function parseCommand(event) {
-    const { code, key } = event;
+  function normalizeKeyFromCode(code) {
+    if (typeof code !== 'string' || code.length === 0) return '';
 
-    if ((code === 'KeyR' || key === 'r' || key === 'R') && (event.metaKey || event.ctrlKey)) {
-      return null;
+    if (code === 'Comma') return ',';
+    if (code === 'Period') return '.';
+
+    if (code.startsWith('Key') && code.length === 4) {
+      return code.slice(3).toLowerCase();
     }
 
-    if (code === 'Comma' || key === ',' || key === '<') {
+    return '';
+  }
+
+  function getEventShortcutCandidates(event) {
+    const byKey = Storage.normalizeShortcutKey(event.key, '');
+    const byCode = normalizeKeyFromCode(event.code);
+
+    if (byKey && byCode && byKey !== byCode) {
+      return [byKey, byCode];
+    }
+
+    if (byKey) return [byKey];
+    if (byCode) return [byCode];
+    return [];
+  }
+
+  function parseCommand(event) {
+    if (event.metaKey || event.ctrlKey) return null;
+
+    const { shortcutKeys } = ContentState;
+    const candidates = getEventShortcutCandidates(event);
+    if (candidates.length === 0) return null;
+
+    if (candidates.includes(shortcutKeys.decrease)) {
       return COMMANDS.DECREASE;
     }
 
-    if (code === 'Period' || key === '.' || key === '>') {
+    if (candidates.includes(shortcutKeys.increase)) {
       return COMMANDS.INCREASE;
     }
 
-    if ((code === 'KeyR' || key === 'r' || key === 'R') && !event.shiftKey && !event.altKey) {
+    if (candidates.includes(shortcutKeys.toggle)) {
       return COMMANDS.TOGGLE;
     }
 
